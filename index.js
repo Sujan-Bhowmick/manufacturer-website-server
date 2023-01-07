@@ -4,8 +4,9 @@ const app = express();
 const jwt = require('jsonwebtoken')
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const e = require('express');
 const port = process.env.PORT || 5001;
+
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -36,6 +37,7 @@ async function run() {
         const productCollection = client.db('car_parts').collection('products');
         const orderCollection = client.db('car_parts').collection('orders');
         const userCollection = client.db('car_parts').collection('users');
+        const paymentCollection = client.db('car_parts').collection('payments');
 
         app.get('/product', async (req, res) => {
             const query = {};
@@ -70,6 +72,30 @@ async function run() {
                 return res.status(403).send({ message: 'Forbidden Access' })
             }
 
+        });
+
+        app.get('/order/:id', verifyJWT, async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: ObjectId(id)};
+            const order = await orderCollection.findOne(query);
+            res.send(order);
+
+        });
+
+        app.patch('/order/:id',verifyJWT, async(req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = {_id:ObjectId(id)};
+            const updatedDoc ={
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+           
+            const updatedOrder = await orderCollection.updateOne(filter, updatedDoc);
+            const result = await paymentCollection.insertOne(payment);
+            res.send(updatedDoc)
         })
 
         app.put('/user/admin/:email', verifyJWT, async (req, res) => {
@@ -114,6 +140,18 @@ async function run() {
         app.get('/user', verifyJWT, async (req, res) => {
             const users = await userCollection.find().toArray();
             res.send(users);
+        });
+
+        app.post('/create-payment-intent', verifyJWT, async(req, res) => {
+            const product = req.body;
+            const price = product.price;
+            const amount = price* 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount, 
+                currency: 'usd',
+                payment_method_types: ['card']
+            })
+            res.send({clientSecret: paymentIntent.client_secret})
         })
     }
     finally {
