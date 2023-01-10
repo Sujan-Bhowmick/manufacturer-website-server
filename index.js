@@ -52,13 +52,19 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const product = await productCollection.findOne(query);
             res.send(product);
-        })
+        });
+
+        app.post('/product', async(req, res) => {
+            const newProduct = req.body;
+            const result = await productCollection.insertOne(newProduct);
+            res.send(result);
+        });
 
         app.post('/order', async (req, res) => {
             const newOrder = req.body;
-            const result = await orderCollection.insertOne(newOrder)
-            res.send(result)
-        })
+            const result = await orderCollection.insertOne(newOrder);
+            res.send(result);
+        });
 
         app.get('/order', verifyJWT, async (req, res) => {
             const email = req.query.email;
@@ -81,6 +87,13 @@ async function run() {
             res.send(order);
 
         });
+
+        app.delete('/order/:id', verifyJWT, async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: ObjectId(id)};
+            const result = await orderCollection.deleteOne(query);
+            res.send(result);
+        })
 
         app.patch('/order/:id',verifyJWT, async(req, res) => {
             const id = req.params.id;
