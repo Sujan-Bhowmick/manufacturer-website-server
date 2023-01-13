@@ -38,6 +38,7 @@ async function run() {
         const orderCollection = client.db('car_parts').collection('orders');
         const userCollection = client.db('car_parts').collection('users');
         const paymentCollection = client.db('car_parts').collection('payments');
+        const reviewCollection = client.db('car_parts').collection('reviews');
 
         app.get('/product', async (req, res) => {
             const query = {};
@@ -154,6 +155,17 @@ async function run() {
             const users = await userCollection.find().toArray();
             res.send(users);
         });
+
+        app.post('/review', async(req, res) => {
+            const newReview = req.body;
+            const result = await reviewCollection.insertOne(newReview);
+            res.send(result);
+        });
+
+        app.get('/review', async(req, res) => {
+            const reviews = await reviewCollection.find().toArray();
+            res.send(reviews);
+        })
 
         app.post('/create-payment-intent', verifyJWT, async(req, res) => {
             const product = req.body;
